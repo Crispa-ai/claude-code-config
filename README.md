@@ -5,16 +5,30 @@ Centralized agents and skills for maintaining consistency across all repositorie
 ## 📦 What's Included
 
 ### Agents (Autonomous Workflows)
+
+**Git & GitHub Workflows:**
 - **fix-gh-issue-agent**: Autonomous GitHub issue resolution with branch creation and PR submission
 - **review-pr-agent**: PR review, pipeline monitoring, Dependabot checks, and auto-fixing
 - **commit-push-agent**: Intelligent commit and push workflow with pre-commit validation
+
+**Development Workflows:**
+- **full-stack-dev-agent**: Complete development workflow - tests (pytest/Jest), migrations, database seeding, dependency updates, builds, linting
 - **code-review-validator**: Comprehensive code review against project standards and CLAUDE.md rules
+
+**Infrastructure & Security:**
+- **infrastructure-troubleshooter-agent**: Docker, Celery, Redis, PostgreSQL, Plaid integration, and webhook debugging
 - **security-deployment-validator**: Security checks, authentication validation, and deployment safety
 
 ### Skills (Quick Procedures)
+
+**Quick Fixes:**
 - **clear-auth0-cache**: Fix "Loading Crispa" spinner issues
+- **debugging-playbook**: Complete debugging reference for common frontend, backend, database, and API issues
+
+**Best Practices & Guides:**
 - **code-validation-checklist**: Complete pre-commit validation checklist
 - **query-optimization-helper**: Django query optimization reference guide
+- **multi-tenant-security-handbook**: Tenant isolation, authentication, and security patterns
 - **dependabot-helper**: Manage and close outdated Dependabot PRs
 
 ## 🚀 Installation
