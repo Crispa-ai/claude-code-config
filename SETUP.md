@@ -345,12 +345,11 @@ Add these secrets to your repository (Settings → Secrets → Actions):
 
 The workflow triggers on:
 
-- PRs opened to `staging` or `production` branches
-- PRs marked "ready for review"
+- PRs **merged** to `staging` or `production` branches
 
 It skips:
 
-- Draft PRs
+- Closed (not merged) PRs
 - Dependabot PRs
 
 ### Generated Documentation
