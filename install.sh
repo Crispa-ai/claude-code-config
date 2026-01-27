@@ -4,7 +4,7 @@
 
 set -e  # Exit on error
 
-REPO_URL="https://github.com/crispa-org/claude-code-config"
+REPO_URL="https://github.com/Crispa-ai/claude-code-config"
 REPO_BRANCH="${CLAUDE_CONFIG_BRANCH:-main}"
 TARGET_DIR=".claude"
 SHARED_DIR="$TARGET_DIR/.shared"
@@ -149,5 +149,5 @@ echo "     cd .claude/.shared && git pull && cd ../.."
 echo ""
 echo "  3. Or use the GitHub Action for automatic updates (see README)"
 echo ""
-info "Documentation: https://github.com/crispa-org/claude-code-config"
+info "Documentation: https://github.com/Crispa-ai/claude-code-config"
 echo ""

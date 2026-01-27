@@ -277,10 +277,101 @@ git pull origin main
 
 ---
 
+---
+
+## Notion Documentation Automation
+
+Automatically generate feature documentation from PRs and upload to Notion.
+
+### Prerequisites
+
+1. **Notion Integration**
+   - Create at [notion.so/my-integrations](https://notion.so/my-integrations)
+   - Copy the "Internal Integration Token"
+
+2. **Notion Teamspace Structure**
+
+   Create this folder hierarchy in your teamspace:
+
+   ```text
+   📁 Engineering
+   └── 📁 Feature Documentation
+       ├── 📊 Feature Docs Database    ← Your database here
+       ├── 📁 2025-Q1
+       ├── 📁 2025-Q2
+       └── ...
+   ```
+
+3. **Notion Database Properties**
+
+   Create a database with these properties:
+
+   | Property    | Type      | Notes                                 |
+   | ----------- | --------- | ------------------------------------- |
+   | Name        | Title     | Page title (required)                 |
+   | Status      | Select    | Options: Draft, Published, Archived   |
+   | Environment | Select    | Options: Staging, Production          |
+   | Category    | Select    | Options: Feature, Bugfix, Refactor    |
+   | PR Link     | URL       | Link to GitHub PR                     |
+   | Author      | Rich Text | PR author username                    |
+   | Date        | Date      | Generation date                       |
+   | Quarter     | Select    | Options: Q1, Q2, Q3, Q4               |
+
+4. **Share Database with Integration**
+
+   - Open your database in Notion
+   - Click "..." menu → Connections → Add your integration
+
+5. **Get Database ID**
+
+   From the database URL:
+
+   ```text
+   https://notion.so/your-workspace/abc123def456...?v=...
+                                     ↑ Database ID (32 hex chars)
+   ```
+
+### GitHub Secrets
+
+Add these secrets to your repository (Settings → Secrets → Actions):
+
+| Secret               | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `ANTHROPIC_API_KEY`  | Claude API key (used by Claude Code CLI)     |
+| `NOTION_API_KEY`     | Notion integration token                     |
+| `NOTION_DATABASE_ID` | Target database ID                           |
+
+### Workflow Trigger
+
+The workflow triggers on:
+
+- PRs opened to `staging` or `production` branches
+- PRs marked "ready for review"
+
+It skips:
+
+- Draft PRs
+- Dependabot PRs
+
+### Generated Documentation
+
+Each page includes:
+
+- Feature overview
+- Problem solved
+- Technical implementation
+- API/database changes
+- Configuration changes
+- Usage examples
+- Testing notes
+- Migration notes
+
+---
+
 ## Questions?
 
 - **Documentation**: See `README.md` in this directory
-- **Issues**: Report at https://github.com/crispa-org/claude-code-config/issues
+- **Issues**: Report at <https://github.com/Crispa-ai/claude-code-config/issues>
 - **Updates**: Check GitHub releases for version history
 
-Happy coding with Claude! 🚀
+Happy coding with Claude!

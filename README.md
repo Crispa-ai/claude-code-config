@@ -35,13 +35,13 @@ Centralized agents and skills for maintaining consistency across all repositorie
 
 ### Quick Install
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-org/claude-code-config/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Crispa-ai/claude-code-config/main/install.sh | bash
 ```
 
 ### Manual Install
 ```bash
 # Clone into your project
-git clone https://github.com/your-org/claude-code-config .claude/.shared
+git clone https://github.com/Crispa-ai/claude-code-config .claude/.shared
 
 # Create symlinks
 ln -sf ../.shared/agents/* .claude/agents/
@@ -259,7 +259,7 @@ git checkout main
 
 ## 🐛 Issues & Feedback
 
-Report issues at: https://github.com/your-org/claude-code-config/issues
+Report issues at: <https://github.com/Crispa-ai/claude-code-config/issues>
 
 ## 📄 License
 
