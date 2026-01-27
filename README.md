@@ -4,33 +4,33 @@ Centralized agents and skills for maintaining consistency across all repositorie
 
 ## 📦 What's Included
 
+**7 Agents** (autonomous workflows) + **7 Skills** (quick procedures)
+
+> 📖 **[Full Guide](GUIDE.md)** - Complete installation walkthrough and detailed documentation for all agents and skills
+
 ### Agents (Autonomous Workflows)
 
-**Git & GitHub Workflows:**
-- **fix-gh-issue-agent**: Autonomous GitHub issue resolution with branch creation and PR submission
-- **review-pr-agent**: PR review, pipeline monitoring, Dependabot checks, and auto-fixing
-- **commit-push-agent**: Intelligent commit and push workflow with pre-commit validation
-
-**Development Workflows:**
-- **full-stack-dev-agent**: Complete development workflow - tests (pytest/Jest), migrations, database seeding, dependency updates, builds, linting
-- **code-review-validator**: Comprehensive code review against project standards and CLAUDE.md rules
-
-**Infrastructure & Security:**
-- **infrastructure-troubleshooter-agent**: Docker, Celery, Redis, PostgreSQL, Plaid integration, and webhook debugging
-- **security-deployment-validator**: Security checks, authentication validation, and deployment safety
+| Agent | Purpose |
+| ----- | ------- |
+| **fix-gh-issue-agent** | Autonomous GitHub issue resolution with branch creation and PR submission |
+| **review-pr-agent** | PR review, pipeline monitoring, Dependabot checks, and auto-fixing |
+| **commit-push-agent** | Intelligent commit and push workflow with pre-commit validation |
+| **full-stack-dev-agent** | Complete development workflow - tests, migrations, seeding, builds |
+| **code-review-validator** | Comprehensive code review against project standards |
+| **infrastructure-troubleshooter-agent** | Docker, Celery, Redis, PostgreSQL, and integration debugging |
+| **security-deployment-validator** | Security checks, authentication validation, deployment safety |
 
 ### Skills (Quick Procedures)
 
-**Quick Fixes:**
-- **clear-auth0-cache**: Fix "Loading Crispa" spinner issues
-- **debugging-playbook**: Complete debugging reference for common frontend, backend, database, and API issues
-
-**Best Practices & Guides:**
-- **code-validation-checklist**: Complete pre-commit validation checklist
-- **query-optimization-helper**: Django query optimization reference guide
-- **multi-tenant-security-handbook**: Tenant isolation, authentication, OAuth flows, and security patterns
-- **anti-patterns-reference**: Historical incident reference with production failures and how to avoid them
-- **dependabot-helper**: Manage and close outdated Dependabot PRs
+| Skill | Purpose |
+| ----- | ------- |
+| **clear-auth0-cache** | Fix "Loading Crispa" spinner issues |
+| **debugging-playbook** | Complete debugging reference for common issues |
+| **code-validation-checklist** | Pre-commit validation checklist |
+| **query-optimization-helper** | Django query optimization reference |
+| **multi-tenant-security-handbook** | Tenant isolation, OAuth flows, security patterns |
+| **anti-patterns-reference** | Historical production incidents and prevention |
+| **dependabot-helper** | Manage and close outdated Dependabot PRs |
 
 ## 🚀 Installation
 
