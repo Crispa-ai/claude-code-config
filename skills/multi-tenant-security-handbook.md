@@ -529,6 +529,160 @@ def get_invoices(request):
 
 ---
 
+## OAuth Flows and Tenant Context
+
+**CRITICAL**: OAuth flows MUST preserve tenant context throughout the entire authentication process.
+
+### The Problem
+
+When users authenticate via OAuth (Auth0, Google, etc.), the redirect flow can lose tenant context:
+
+```python
+# ❌ WRONG: Context lost during OAuth redirect
+def oauth_callback(request):
+    # User authenticated but... which tenant?
+    user = authenticate_oauth(request)
+    return redirect('/error')  # No tenant context!
+```
+
+### Required Pattern: Preserve Tenant in OAuth State
+
+```python
+# ✅ CORRECT: Include tenant in OAuth state parameter
+def initiate_oauth(request, tenant_slug):
+    state = {
+        'tenant_slug': tenant_slug,
+        'csrf_token': generate_csrf_token(),
+        'redirect_uri': request.GET.get('redirect_uri', f'/{tenant_slug}/dashboard')
+    }
+    encoded_state = base64.urlsafe_b64encode(json.dumps(state).encode()).decode()
+
+    oauth_url = f"{AUTH0_DOMAIN}/authorize?" + urlencode({
+        'client_id': AUTH0_CLIENT_ID,
+        'redirect_uri': CALLBACK_URL,
+        'state': encoded_state,
+        'response_type': 'code',
+        'scope': 'openid profile email',
+    })
+    return redirect(oauth_url)
+
+def oauth_callback(request):
+    # Extract tenant from state
+    encoded_state = request.GET.get('state')
+    state = json.loads(base64.urlsafe_b64decode(encoded_state).decode())
+    tenant_slug = state['tenant_slug']
+
+    # Verify CSRF
+    if state['csrf_token'] != get_session_csrf_token(request):
+        return redirect(f'/{tenant_slug}/error?message=csrf_validation_failed')
+
+    try:
+        user = authenticate_oauth(request)
+        # Redirect back to tenant-specific URL
+        return redirect(state['redirect_uri'])
+    except OAuthError as e:
+        # ✅ Preserve tenant context in error redirect
+        return redirect(f'/{tenant_slug}/error?message={e.message}')
+```
+
+### Frontend OAuth (Next.js + Auth0)
+
+```typescript
+// pages/[tenant]/login.tsx
+import { useAuth0 } from "@auth0/auth0-react";
+import { useRouter } from "next/router";
+
+function LoginPage() {
+    const { loginWithRedirect } = useAuth0();
+    const router = useRouter();
+    const { tenant } = router.query;
+
+    const handleLogin = () => {
+        loginWithRedirect({
+            // Include tenant in appState - Auth0 preserves this through redirect
+            appState: {
+                returnTo: `/${tenant}/dashboard`,
+                tenant: tenant,
+            },
+        });
+    };
+
+    return <button onClick={handleLogin}>Login</button>;
+}
+
+// Auth0 callback handler
+// _app.tsx or auth provider
+const onRedirectCallback = (appState) => {
+    const tenant = appState?.tenant;
+    const returnTo = appState?.returnTo || `/${tenant}/dashboard`;
+
+    // Always redirect to tenant-specific URL
+    router.push(returnTo);
+};
+```
+
+### Error Handling with Tenant Context
+
+```python
+# ✅ CORRECT: All error paths preserve tenant
+def oauth_callback(request):
+    tenant_slug = extract_tenant_from_state(request)
+
+    try:
+        # ... authentication logic
+    except OAuthError as e:
+        logger.error(
+            "OAuth error",
+            extra={
+                'tenant': tenant_slug,
+                'error': str(e),
+                'user_agent': request.META.get('HTTP_USER_AGENT'),
+            }
+        )
+        return redirect(f'/{tenant_slug}/auth/error?code={e.code}')
+
+    except Exception as e:
+        logger.exception(
+            "Unexpected OAuth error",
+            extra={'tenant': tenant_slug}
+        )
+        return redirect(f'/{tenant_slug}/auth/error?code=unexpected')
+```
+
+### Testing OAuth Tenant Preservation
+
+```python
+@pytest.mark.django_db
+def test_oauth_preserves_tenant_on_error(client, tenant):
+    """OAuth errors must redirect to tenant-specific error page"""
+
+    # Simulate OAuth callback with invalid code
+    response = client.get(
+        '/auth/callback',
+        {'code': 'invalid', 'state': encode_state({'tenant_slug': tenant.slug})}
+    )
+
+    # Should redirect to tenant error page, not generic /error
+    assert response.status_code == 302
+    assert f'/{tenant.slug}/auth/error' in response.url
+
+@pytest.mark.django_db
+def test_oauth_state_includes_tenant(client, tenant):
+    """OAuth initiation must include tenant in state"""
+
+    response = client.get(f'/{tenant.slug}/auth/login')
+    redirect_url = response.url
+
+    # Extract state from OAuth URL
+    parsed = urlparse(redirect_url)
+    state = parse_qs(parsed.query)['state'][0]
+    decoded_state = json.loads(base64.urlsafe_b64decode(state))
+
+    assert decoded_state['tenant_slug'] == tenant.slug
+```
+
+---
+
 ## Emergency Response: Tenant Data Leak
 
 If tenant data is accidentally exposed:

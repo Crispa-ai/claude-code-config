@@ -28,7 +28,8 @@ Centralized agents and skills for maintaining consistency across all repositorie
 **Best Practices & Guides:**
 - **code-validation-checklist**: Complete pre-commit validation checklist
 - **query-optimization-helper**: Django query optimization reference guide
-- **multi-tenant-security-handbook**: Tenant isolation, authentication, and security patterns
+- **multi-tenant-security-handbook**: Tenant isolation, authentication, OAuth flows, and security patterns
+- **anti-patterns-reference**: Historical incident reference with production failures and how to avoid them
 - **dependabot-helper**: Manage and close outdated Dependabot PRs
 
 ## 🚀 Installation
