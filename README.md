@@ -4,7 +4,7 @@ Centralized agents and skills for maintaining consistency across all repositorie
 
 ## 📦 What's Included
 
-**7 Agents** (autonomous workflows) + **7 Skills** (quick procedures)
+**7 Agents** (autonomous workflows) + **8 Skills** (quick procedures)
 
 > 📖 **[Full Guide](GUIDE.md)** - Complete installation walkthrough and detailed documentation for all agents and skills
 
@@ -31,6 +31,7 @@ Centralized agents and skills for maintaining consistency across all repositorie
 | **multi-tenant-security-handbook** | Tenant isolation, OAuth flows, security patterns |
 | **anti-patterns-reference** | Historical production incidents and prevention |
 | **dependabot-helper** | Manage and close outdated Dependabot PRs |
+| **complypay-payments-api** | ComplyPay Payments API reference (endpoints, states, types) |
 
 ## 🚀 Installation
 
