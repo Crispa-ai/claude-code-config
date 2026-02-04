@@ -506,6 +506,16 @@ chrome-debug
 "wait for 'Success' to appear then take a screenshot"
 ```
 
+### Login Persistence
+
+The `chrome-debug` alias uses a profile at `/tmp/chrome-debug-profile`. Your login sessions persist within the same day but are cleared on reboot.
+
+**To persist logins across reboots**, update the alias in `~/.zshrc`:
+
+```bash
+alias chrome-debug="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223 --user-data-dir=$HOME/.chrome-debug-profile"
+```
+
 ---
 
 ## Project Structure
