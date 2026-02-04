@@ -84,6 +84,56 @@ which chrome-debug
 
 ---
 
+## How Agents & Skills Work
+
+### Agents vs Normal Chat
+
+| Mode | How it works |
+|------|--------------|
+| **Normal chat** | Claude responds based on general knowledge + codebase context |
+| **Using an agent** | Claude follows a specific workflow defined in the agent file |
+
+### How to Invoke Agents
+
+**Method 1: Slash commands** (for command-based agents)
+```
+fix-gh-issue --123
+review-pr --456 --auto-approve
+commit-push
+```
+
+**Method 2: Explicitly reference the agent**
+```
+User: Use the full-stack-dev-agent to add a new API endpoint for invoices
+User: Run the infrastructure-troubleshooter-agent to debug why Celery is stuck
+```
+
+**Method 3: Automatic** (some agents trigger based on context)
+- `code-review-validator` - runs after you write code
+- `security-deployment-validator` - runs before commits
+
+### How to Invoke Skills
+
+Reference the skill name in your message:
+```
+User: Check the anti-patterns-reference before I implement this webhook
+User: Use the query-optimization-helper to fix these slow queries
+User: What does the multi-tenant-security-handbook say about OAuth state?
+```
+
+### How to Know You're Using an Agent
+
+When an agent is active, Claude will:
+1. Follow the specific workflow defined in the agent
+2. Often show structured output (phases, checkpoints)
+3. Reference the agent's rules and requirements
+
+If you just chat normally without invoking an agent, Claude uses general knowledge.
+
+**Tip:** If you want a specific workflow, always explicitly invoke the agent.
+
+---
+
 ## Agents
 
 ### fix-gh-issue-agent
