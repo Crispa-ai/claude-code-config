@@ -33,8 +33,12 @@ trap 'rm -f "$FILES_LIST"' EXIT
 if git rev-parse --verify "$REMOTE_BRANCH" >/dev/null 2>&1; then
     git diff --name-only -z "$REMOTE_BRANCH" HEAD 2>/dev/null > "$FILES_LIST" || true
 else
-    # New branch - get files from last commit
-    git diff --name-only -z HEAD~1 HEAD 2>/dev/null > "$FILES_LIST" || git ls-files -z > "$FILES_LIST"
+    # New branch - get files from last commit (or all files for initial commit)
+    if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+        git diff --name-only -z HEAD~1 HEAD 2>/dev/null > "$FILES_LIST" || git ls-files -z > "$FILES_LIST"
+    else
+        git diff-tree --no-commit-id --name-only -r -z HEAD 2>/dev/null > "$FILES_LIST" || git ls-files -z > "$FILES_LIST"
+    fi
 fi
 
 # Check if any files to validate
@@ -48,7 +52,7 @@ WARNINGS=0
 
 # 1. Check for secrets/tokens
 echo -e "${BLUE}1.${NC} Checking for secrets/tokens..."
-SECRETS=$(xargs -0 grep -lE '(api_key|secret_key|password|Bearer |sk_live|sk_test|AKIA|ghp_|gho_)' < "$FILES_LIST" 2>/dev/null | grep -v '\.md$' | grep -v 'test' | head -5 || true)
+SECRETS=$(xargs -0 grep -lE '(api_key|secret_key|password|Bearer [A-Za-z0-9._-]+|sk_live|sk_test|AKIA|ghp_|gho_)' < "$FILES_LIST" 2>/dev/null | grep -v '\.md$' | grep -v 'test' | head -5 || true)
 if [ -n "$SECRETS" ]; then
     echo -e "   ${RED}✗${NC} Potential secrets found in:"
     echo "$SECRETS" | sed 's/^/      /'
@@ -62,7 +66,7 @@ echo -e "${BLUE}2.${NC} Checking for console.log..."
 JS_FILES_LIST=$(mktemp)
 xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '__tests__' | grep -v '\.spec\.' > "$JS_FILES_LIST" || true
 if [ -s "$JS_FILES_LIST" ]; then
-    CONSOLE_LOGS=$(xargs grep -n 'console\.log' < "$JS_FILES_LIST" 2>/dev/null | grep -v '// eslint-disable' | head -5 || true)
+    CONSOLE_LOGS=$(xargs grep -n 'console\.log' < "$JS_FILES_LIST" 2>/dev/null | grep -vE 'eslint-disable' | head -5 || true)
     if [ -n "$CONSOLE_LOGS" ]; then
         echo -e "   ${RED}✗${NC} console.log found:"
         echo "$CONSOLE_LOGS" | head -3 | sed 's/^/      /'
@@ -80,7 +84,7 @@ echo -e "${BLUE}3.${NC} Checking for TypeScript 'any' type..."
 TS_FILES_LIST=$(mktemp)
 xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.(ts|tsx)$' | grep -v '\.d\.ts$' > "$TS_FILES_LIST" || true
 if [ -s "$TS_FILES_LIST" ]; then
-    ANY_TYPES=$(xargs grep -n ': any\b' < "$TS_FILES_LIST" 2>/dev/null | grep -v '// eslint-disable' | grep -v '\.test\.' | head -5 || true)
+    ANY_TYPES=$(xargs grep -n ': any\b' < "$TS_FILES_LIST" 2>/dev/null | grep -vE 'eslint-disable' | grep -v '\.test\.' | head -5 || true)
     if [ -n "$ANY_TYPES" ]; then
         echo -e "   ${YELLOW}⚠${NC} TypeScript 'any' found (consider proper types):"
         echo "$ANY_TYPES" | head -3 | sed 's/^/      /'
@@ -98,11 +102,13 @@ echo -e "${BLUE}4.${NC} Checking tenant page authentication..."
 TENANT_AUTH_ERRORS=0
 while IFS= read -r -d '' page; do
     if [[ "$page" =~ pages/\[tenant\].*\.(tsx|ts)$ ]]; then
-        if [ -f "$page" ]; then
-            if ! grep -qE 'withAuthenticationRequired|getSession|getServerSideProps' "$page"; then
-                echo -e "   ${RED}✗${NC} Missing authentication: $page"
-                TENANT_AUTH_ERRORS=$((TENANT_AUTH_ERRORS + 1))
-            fi
+        if [ ! -f "$page" ]; then
+            continue
+        fi
+        # Check for auth patterns: withAuthenticationRequired(...), getSession(...), or getServerSideProps assignment
+        if ! grep -qE 'withAuthenticationRequired\s*\(|getSession\s*\(|getServerSideProps\s*=' "$page"; then
+            echo -e "   ${RED}✗${NC} Missing authentication: $page"
+            TENANT_AUTH_ERRORS=$((TENANT_AUTH_ERRORS + 1))
         fi
     fi
 done < "$FILES_LIST"
