@@ -112,6 +112,37 @@ for skill in "$SHARED_DIR/skills"/*.md; do
 done
 success "Linked $SKILLS_LINKED skills"
 
+# Create symlinks for hooks
+info "Linking hooks..."
+mkdir -p "$TARGET_DIR/hooks"
+HOOKS_LINKED=0
+for hook in "$SHARED_DIR/hooks"/*; do
+    if [ -f "$hook" ]; then
+        hook_name=$(basename "$hook")
+        target="$TARGET_DIR/hooks/$hook_name"
+
+        # Remove existing symlink or file
+        if [ -L "$target" ]; then
+            rm "$target"
+        elif [ -f "$target" ]; then
+            warning "Found existing file $target (not a symlink)"
+            echo "   Backing up to ${target}.backup"
+            mv "$target" "${target}.backup"
+        fi
+
+        # Create symlink (relative path for portability)
+        ln -s "../.shared/hooks/$hook_name" "$target"
+        chmod +x "$target"
+        HOOKS_LINKED=$((HOOKS_LINKED + 1))
+    fi
+done
+success "Linked $HOOKS_LINKED hooks"
+
+# Configure git to use shared hooks directory
+info "Configuring git hooks..."
+git config core.hooksPath .claude/hooks
+success "Set git hooks path to .claude/hooks"
+
 # Add .shared to .gitignore if not already present
 GITIGNORE=".gitignore"
 if [ ! -f "$GITIGNORE" ]; then
@@ -127,6 +158,42 @@ else
     info ".claude/.shared/ already in .gitignore"
 fi
 
+# Setup Chrome DevTools MCP for browser debugging (optional)
+info "Setting up browser debugging MCP..."
+CHROME_PATH="/Applications/Google Chrome.app"
+MCP_CONFIGURED=false
+
+if [ -d "$CHROME_PATH" ]; then
+    if command -v claude &> /dev/null; then
+        # Remove existing config if present
+        claude mcp remove --scope user chrome-devtools 2>/dev/null || true
+        # Add chrome-devtools MCP
+        claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@latest --browserUrl http://localhost:9223
+        MCP_CONFIGURED=true
+        success "Chrome DevTools MCP configured"
+
+        # Add shell alias for launching Chrome with debugging
+        SHELL_RC=""
+        [ -f "$HOME/.zshrc" ] && SHELL_RC="$HOME/.zshrc"
+        [ -z "$SHELL_RC" ] && [ -f "$HOME/.bashrc" ] && SHELL_RC="$HOME/.bashrc"
+
+        if [ -n "$SHELL_RC" ] && ! grep -q "chrome-debug" "$SHELL_RC"; then
+            cat >> "$SHELL_RC" << 'ALIASEOF'
+
+# Chrome with remote debugging for Claude Code (added by claude-code-config)
+alias chrome-debug="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223 --user-data-dir=/tmp/chrome-debug-profile"
+ALIASEOF
+            success "Added 'chrome-debug' shell alias to $SHELL_RC"
+        fi
+    else
+        warning "Claude CLI not found - skipping MCP setup"
+        echo "   Install with: npm install -g @anthropic-ai/claude-code"
+    fi
+else
+    warning "Chrome not found - skipping browser MCP setup"
+    echo "   Install with: brew install --cask google-chrome"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -136,18 +203,29 @@ echo ""
 info "Installed:"
 echo "  • $AGENTS_LINKED agents"
 echo "  • $SKILLS_LINKED skills"
+echo "  • $HOOKS_LINKED git hooks (auto-validation on push)"
+if [ "$MCP_CONFIGURED" = true ]; then
+    echo "  • Chrome DevTools MCP (browser debugging)"
+fi
 echo ""
 info "Location: $TARGET_DIR/"
 echo ""
 info "What's next?"
 echo "  1. Commit the symlinks to your repository:"
-echo "     git add .claude/agents .claude/skills .gitignore"
+echo "     git add .claude/agents .claude/skills .claude/hooks .gitignore"
 echo "     git commit -m 'chore: install shared Claude Code config'"
 echo ""
 echo "  2. Update anytime by running:"
 echo "     cd .claude/.shared && git pull && cd ../.."
 echo ""
-echo "  3. Or use the GitHub Action for automatic updates (see README)"
+echo "  3. For browser debugging:"
+echo "     - Start new terminal (to load alias)"
+echo "     - Run: chrome-debug"
+echo "     - Navigate to your app"
+echo "     - Ask Claude: 'check console for errors'"
+echo ""
+echo "  4. Pre-push validation runs automatically on every git push"
+echo "     - Bypass if needed: git push --no-verify"
 echo ""
 info "Documentation: https://github.com/Crispa-ai/claude-code-config"
 echo ""

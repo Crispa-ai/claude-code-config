@@ -1,0 +1,152 @@
+#!/bin/bash
+# Pre-push hook - runs CLAUDE.md validation before allowing push
+# Installed via: git config core.hooksPath .claude/hooks
+# Part of claude-code-config shared configuration
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}  Pre-Push Validation (claude-code-config)${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Get the remote and branch being pushed to
+remote="$1"
+url="$2"
+
+# Get changed files compared to remote
+CURRENT_BRANCH=$(git branch --show-current)
+REMOTE_BRANCH="origin/$CURRENT_BRANCH"
+
+# Check if remote branch exists
+if git rev-parse --verify "$REMOTE_BRANCH" >/dev/null 2>&1; then
+    FILES=$(git diff --name-only "$REMOTE_BRANCH" HEAD 2>/dev/null || echo "")
+else
+    # New branch - get files from last commit
+    FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git ls-files)
+fi
+
+if [ -z "$FILES" ]; then
+    echo -e "${GREEN}✓${NC} No files to validate"
+    exit 0
+fi
+
+ERRORS=0
+WARNINGS=0
+
+# 1. Check for secrets/tokens
+echo -e "${BLUE}1.${NC} Checking for secrets/tokens..."
+SECRETS=$(echo "$FILES" | xargs grep -lE '(api_key|secret_key|password|Bearer |sk_live|sk_test|AKIA|ghp_|gho_)' 2>/dev/null | grep -v '\.md$' | grep -v 'test' | head -5 || true)
+if [ -n "$SECRETS" ]; then
+    echo -e "   ${RED}✗${NC} Potential secrets found in:"
+    echo "$SECRETS" | sed 's/^/      /'
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "   ${GREEN}✓${NC} No secrets detected"
+fi
+
+# 2. Check for console.log in TypeScript/JavaScript (excluding tests)
+echo -e "${BLUE}2.${NC} Checking for console.log..."
+JS_FILES=$(echo "$FILES" | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '__tests__' | grep -v '\.spec\.' || true)
+if [ -n "$JS_FILES" ]; then
+    CONSOLE_LOGS=$(echo "$JS_FILES" | xargs grep -n 'console\.log' 2>/dev/null | grep -v '// eslint-disable' | head -5 || true)
+    if [ -n "$CONSOLE_LOGS" ]; then
+        echo -e "   ${RED}✗${NC} console.log found:"
+        echo "$CONSOLE_LOGS" | head -3 | sed 's/^/      /'
+        ERRORS=$((ERRORS + 1))
+    else
+        echo -e "   ${GREEN}✓${NC} No console.log found"
+    fi
+else
+    echo -e "   ${GREEN}✓${NC} No JS/TS files changed"
+fi
+
+# 3. Check for TypeScript 'any' type
+echo -e "${BLUE}3.${NC} Checking for TypeScript 'any' type..."
+TS_FILES=$(echo "$FILES" | grep -E '\.(ts|tsx)$' | grep -v '\.d\.ts$' || true)
+if [ -n "$TS_FILES" ]; then
+    ANY_TYPES=$(echo "$TS_FILES" | xargs grep -n ': any\b' 2>/dev/null | grep -v '// eslint-disable' | grep -v '\.test\.' | head -5 || true)
+    if [ -n "$ANY_TYPES" ]; then
+        echo -e "   ${YELLOW}⚠${NC} TypeScript 'any' found (consider proper types):"
+        echo "$ANY_TYPES" | head -3 | sed 's/^/      /'
+        WARNINGS=$((WARNINGS + 1))
+    else
+        echo -e "   ${GREEN}✓${NC} No 'any' types found"
+    fi
+else
+    echo -e "   ${GREEN}✓${NC} No TypeScript files changed"
+fi
+
+# 4. Check tenant page authentication (Crispa-specific)
+echo -e "${BLUE}4.${NC} Checking tenant page authentication..."
+TENANT_PAGES=$(echo "$FILES" | grep -E 'pages/\[tenant\].*\.(tsx|ts)$' || true)
+if [ -n "$TENANT_PAGES" ]; then
+    for page in $TENANT_PAGES; do
+        if [ -f "$page" ]; then
+            if ! grep -qE 'withAuthenticationRequired|getSession|getServerSideProps' "$page"; then
+                echo -e "   ${RED}✗${NC} Missing authentication: $page"
+                ERRORS=$((ERRORS + 1))
+            fi
+        fi
+    done
+    [ $ERRORS -eq 0 ] && echo -e "   ${GREEN}✓${NC} All tenant pages have authentication"
+else
+    echo -e "   ${GREEN}✓${NC} No tenant pages changed"
+fi
+
+# 5. Check for hardcoded IDs
+echo -e "${BLUE}5.${NC} Checking for hardcoded IDs..."
+HARDCODED=$(echo "$FILES" | xargs grep -nE '(user_id|tenant_id|slack_id|channel_id)\s*=\s*["\x27][A-Za-z0-9_-]{5,}["\x27]' 2>/dev/null | grep -v test | grep -v mock | head -3 || true)
+if [ -n "$HARDCODED" ]; then
+    echo -e "   ${YELLOW}⚠${NC} Potential hardcoded IDs:"
+    echo "$HARDCODED" | sed 's/^/      /'
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "   ${GREEN}✓${NC} No hardcoded IDs detected"
+fi
+
+# 6. Check for N+1 query patterns (Django)
+echo -e "${BLUE}6.${NC} Checking for N+1 query patterns..."
+PY_FILES=$(echo "$FILES" | grep -E '\.py$' | grep -v test | grep -v migration || true)
+if [ -n "$PY_FILES" ]; then
+    N_PLUS_1=$(echo "$PY_FILES" | xargs grep -n '\.objects\.' 2>/dev/null | grep -v 'select_related\|prefetch_related' | grep 'for.*in.*\.all()\|for.*in.*\.filter(' | head -3 || true)
+    if [ -n "$N_PLUS_1" ]; then
+        echo -e "   ${YELLOW}⚠${NC} Potential N+1 queries (use select_related/prefetch_related):"
+        echo "$N_PLUS_1" | sed 's/^/      /'
+        WARNINGS=$((WARNINGS + 1))
+    else
+        echo -e "   ${GREEN}✓${NC} No obvious N+1 patterns"
+    fi
+else
+    echo -e "   ${GREEN}✓${NC} No Python files changed"
+fi
+
+# Summary
+echo ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+if [ $ERRORS -gt 0 ]; then
+    echo -e "${RED}✗ Push blocked: $ERRORS error(s), $WARNINGS warning(s)${NC}"
+    echo ""
+    echo -e "  Fix errors above, or bypass with: ${YELLOW}git push --no-verify${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    exit 1
+elif [ $WARNINGS -gt 0 ]; then
+    echo -e "${YELLOW}⚠ Passed with $WARNINGS warning(s) - please review${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    exit 0
+else
+    echo -e "${GREEN}✓ All validations passed${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    exit 0
+fi
