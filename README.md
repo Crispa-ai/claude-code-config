@@ -39,7 +39,13 @@ Shared agents, skills, and git hooks for Crispa repos.
 From your project root:
 
 ```bash
+# Option 1: Direct install
 curl -fsSL https://raw.githubusercontent.com/Crispa-ai/claude-code-config/main/install.sh | bash
+
+# Option 2: Review before running
+curl -fsSL https://raw.githubusercontent.com/Crispa-ai/claude-code-config/main/install.sh -o /tmp/install.sh
+less /tmp/install.sh
+bash /tmp/install.sh
 ```
 
 This automatically:
