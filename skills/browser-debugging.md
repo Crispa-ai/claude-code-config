@@ -143,6 +143,7 @@ claude mcp list | grep chrome
 
 ## Notes
 
-- The `chrome-debug` alias uses a temporary profile (`/tmp/chrome-debug-profile`) to avoid conflicts
+- The `chrome-debug` alias uses a temporary profile to avoid conflicts with your main Chrome profile
+- On multi-user systems, consider using `$TMPDIR/chrome-debug-$USER` instead of `/tmp/chrome-debug-profile`
 - Only one Chrome instance can use the debug port at a time
 - Use `--no-verify` to bypass validation if needed: `git push --no-verify`

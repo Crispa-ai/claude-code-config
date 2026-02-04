@@ -12,15 +12,23 @@ Shared agents, skills, and git hooks for Crispa repos.
    ```
 
 2. **GitHub CLI** (for issue/PR agents)
+
    ```bash
+   # macOS
    brew install gh
    gh auth login
    ```
 
+   Other platforms: <https://github.com/cli/cli#installation>
+
 3. **Google Chrome** (for browser debugging)
+
    ```bash
+   # macOS
    brew install --cask google-chrome
    ```
+
+   Other platforms: <https://www.google.com/chrome/>
 
 ---
 
@@ -78,8 +86,8 @@ claude mcp list | grep chrome
 # Should show: chrome-devtools
 
 # Check alias works (new terminal)
-which chrome-debug
-# Should show the alias
+type chrome-debug
+# Should show: chrome-debug is aliased to ...
 ```
 
 ---
@@ -96,14 +104,16 @@ which chrome-debug
 ### How to Invoke Agents
 
 **Method 1: Slash commands** (for command-based agents)
-```
+
+```text
 fix-gh-issue --123
 review-pr --456 --auto-approve
 commit-push
 ```
 
 **Method 2: Explicitly reference the agent**
-```
+
+```text
 User: Use the full-stack-dev-agent to add a new API endpoint for invoices
 User: Run the infrastructure-troubleshooter-agent to debug why Celery is stuck
 ```
@@ -115,7 +125,8 @@ User: Run the infrastructure-troubleshooter-agent to debug why Celery is stuck
 ### How to Invoke Skills
 
 Reference the skill name in your message:
-```
+
+```text
 User: Check the anti-patterns-reference before I implement this webhook
 User: Use the query-optimization-helper to fix these slow queries
 User: What does the multi-tenant-security-handbook say about OAuth state?
@@ -381,7 +392,9 @@ Claude: [References API docs]
 
 ## Git Hooks
 
-Pre-push validation runs automatically on `git push`:
+### Pre-push Hook
+
+Runs automatically on `git push` (not on commit). Provides last-line-of-defense validation before code reaches the remote.
 
 | Check | Blocks push? |
 |-------|--------------|
@@ -392,7 +405,13 @@ Pre-push validation runs automatically on `git push`:
 | Hardcoded IDs | Warning |
 | N+1 query patterns | Warning |
 
-Bypass: `git push --no-verify`
+**Bypass:** `git push --no-verify`
+
+**Note:** For faster local feedback, run validation manually before committing:
+
+```bash
+.claude/scripts/pre-commit-validate.sh
+```
 
 ---
 
