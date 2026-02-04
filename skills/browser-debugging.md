@@ -100,7 +100,7 @@ source ~/.zshrc
 ```text
 1. "Take a screenshot of the page"
 2. "Get the snapshot - I need to find element X"
-3. "Evaluate: document.querySelector('.broken-element').computedStyleMap()"
+3. "Evaluate: window.getComputedStyle(document.querySelector('.broken-element'))"
 ```
 
 ## Troubleshooting
@@ -146,4 +146,4 @@ claude mcp list | grep chrome
 - The `chrome-debug` alias uses a temporary profile to avoid conflicts with your main Chrome profile
 - On multi-user systems, consider using `$TMPDIR/chrome-debug-$USER` instead of `/tmp/chrome-debug-profile`
 - Only one Chrome instance can use the debug port at a time
-- Use `--no-verify` to bypass validation if needed: `git push --no-verify`
+- These setup instructions are macOS-specific; Linux/Windows users should adapt paths accordingly

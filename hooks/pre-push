@@ -84,7 +84,7 @@ echo -e "${BLUE}3.${NC} Checking for TypeScript 'any' type..."
 TS_FILES_LIST=$(mktemp)
 xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.(ts|tsx)$' | grep -v '\.d\.ts$' > "$TS_FILES_LIST" || true
 if [ -s "$TS_FILES_LIST" ]; then
-    ANY_TYPES=$(xargs grep -n ': any\b' < "$TS_FILES_LIST" 2>/dev/null | grep -vE 'eslint-disable' | grep -v '\.test\.' | head -5 || true)
+    ANY_TYPES=$(xargs grep -nE ':\s*any\b|<any>|\(any\)|as\s+any\b' < "$TS_FILES_LIST" 2>/dev/null | grep -vE 'eslint-disable' | grep -v '\.test\.' | head -5 || true)
     if [ -n "$ANY_TYPES" ]; then
         echo -e "   ${YELLOW}⚠${NC} TypeScript 'any' found (consider proper types):"
         echo "$ANY_TYPES" | head -3 | sed 's/^/      /'
@@ -101,7 +101,7 @@ rm -f "$TS_FILES_LIST"
 echo -e "${BLUE}4.${NC} Checking tenant page authentication..."
 TENANT_AUTH_ERRORS=0
 while IFS= read -r -d '' page; do
-    if [[ "$page" =~ pages/\[tenant\].*\.(tsx|ts)$ ]]; then
+    if [[ "$page" =~ (pages|app)/\[tenant\].*\.(tsx|ts)$ ]]; then
         if [ ! -f "$page" ]; then
             continue
         fi
@@ -114,7 +114,7 @@ while IFS= read -r -d '' page; do
 done < "$FILES_LIST"
 if [ $TENANT_AUTH_ERRORS -gt 0 ]; then
     ERRORS=$((ERRORS + TENANT_AUTH_ERRORS))
-elif xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -qE 'pages/\[tenant\].*\.(tsx|ts)$'; then
+elif xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -qE '(pages|app)/\[tenant\].*\.(tsx|ts)$'; then
     echo -e "   ${GREEN}✓${NC} All tenant pages have authentication"
 else
     echo -e "   ${GREEN}✓${NC} No tenant pages changed"
@@ -122,7 +122,7 @@ fi
 
 # 5. Check for hardcoded IDs
 echo -e "${BLUE}5.${NC} Checking for hardcoded IDs..."
-HARDCODED=$(xargs -0 grep -nE '(user_id|tenant_id|slack_id|channel_id)\s*=\s*["\x27][A-Za-z0-9_-]{5,}["\x27]' < "$FILES_LIST" 2>/dev/null | grep -v test | grep -v mock | head -3 || true)
+HARDCODED=$(xargs -0 grep -nE '(user_id|tenant_id|slack_id|channel_id)\s*(=|:|==|===)\s*["\x27][A-Za-z0-9_-]{5,}["\x27]' < "$FILES_LIST" 2>/dev/null | grep -v test | grep -v mock | head -3 || true)
 if [ -n "$HARDCODED" ]; then
     echo -e "   ${YELLOW}⚠${NC} Potential hardcoded IDs:"
     echo "$HARDCODED" | sed 's/^/      /'
@@ -132,6 +132,8 @@ else
 fi
 
 # 6. Check for N+1 query patterns (Django)
+# Note: This is a simple heuristic that only catches inline patterns like "for x in Model.objects.all()".
+# It won't detect patterns where queryset is assigned to a variable first. Manual review recommended.
 echo -e "${BLUE}6.${NC} Checking for N+1 query patterns..."
 PY_FILES_LIST=$(mktemp)
 xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.py$' | grep -v test | grep -v migration > "$PY_FILES_LIST" || true

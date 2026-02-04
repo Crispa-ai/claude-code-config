@@ -181,13 +181,19 @@ if [ -d "$CHROME_PATH" ]; then
         [ -f "$HOME/.zshrc" ] && SHELL_RC="$HOME/.zshrc"
         [ -z "$SHELL_RC" ] && [ -f "$HOME/.bashrc" ] && SHELL_RC="$HOME/.bashrc"
 
-        if [ -n "$SHELL_RC" ] && ! grep -q "chrome-debug" "$SHELL_RC"; then
-            cat >> "$SHELL_RC" << 'ALIASEOF'
+        if [ -n "$SHELL_RC" ]; then
+            if ! grep -q "chrome-debug" "$SHELL_RC"; then
+                cat >> "$SHELL_RC" << 'ALIASEOF'
 
 # Chrome with remote debugging for Claude Code (added by claude-code-config)
 alias chrome-debug="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223 --user-data-dir=/tmp/chrome-debug-profile"
 ALIASEOF
-            success "Added 'chrome-debug' shell alias to $SHELL_RC"
+                success "Added 'chrome-debug' shell alias to $SHELL_RC"
+            fi
+        else
+            info "No supported shell rc found (~/.zshrc or ~/.bashrc)"
+            echo "   Add this alias manually to your shell config:"
+            echo '   alias chrome-debug="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223 --user-data-dir=/tmp/chrome-debug-profile"'
         fi
     else
         warning "Claude CLI not found - skipping MCP setup"
