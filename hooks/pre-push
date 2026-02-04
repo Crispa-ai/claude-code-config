@@ -18,23 +18,27 @@ echo -e "${BLUE}  Pre-Push Validation (claude-code-config)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Get the remote and branch being pushed to
-remote="$1"
-url="$2"
+# Get the remote name from positional argument (fallback to "origin")
+REMOTE_NAME="${1:-origin}"
 
-# Get changed files compared to remote
+# Get current branch
 CURRENT_BRANCH=$(git branch --show-current)
-REMOTE_BRANCH="origin/$CURRENT_BRANCH"
+REMOTE_BRANCH="$REMOTE_NAME/$CURRENT_BRANCH"
 
-# Check if remote branch exists
+# Temporary file for NUL-delimited file list
+FILES_LIST=$(mktemp)
+trap 'rm -f "$FILES_LIST"' EXIT
+
+# Get changed files compared to remote (NUL-delimited for safety)
 if git rev-parse --verify "$REMOTE_BRANCH" >/dev/null 2>&1; then
-    FILES=$(git diff --name-only "$REMOTE_BRANCH" HEAD 2>/dev/null || echo "")
+    git diff --name-only -z "$REMOTE_BRANCH" HEAD 2>/dev/null > "$FILES_LIST" || true
 else
     # New branch - get files from last commit
-    FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git ls-files)
+    git diff --name-only -z HEAD~1 HEAD 2>/dev/null > "$FILES_LIST" || git ls-files -z > "$FILES_LIST"
 fi
 
-if [ -z "$FILES" ]; then
+# Check if any files to validate
+if [ ! -s "$FILES_LIST" ]; then
     echo -e "${GREEN}✓${NC} No files to validate"
     exit 0
 fi
@@ -44,7 +48,7 @@ WARNINGS=0
 
 # 1. Check for secrets/tokens
 echo -e "${BLUE}1.${NC} Checking for secrets/tokens..."
-SECRETS=$(echo "$FILES" | xargs grep -lE '(api_key|secret_key|password|Bearer |sk_live|sk_test|AKIA|ghp_|gho_)' 2>/dev/null | grep -v '\.md$' | grep -v 'test' | head -5 || true)
+SECRETS=$(xargs -0 grep -lE '(api_key|secret_key|password|Bearer |sk_live|sk_test|AKIA|ghp_|gho_)' < "$FILES_LIST" 2>/dev/null | grep -v '\.md$' | grep -v 'test' | head -5 || true)
 if [ -n "$SECRETS" ]; then
     echo -e "   ${RED}✗${NC} Potential secrets found in:"
     echo "$SECRETS" | sed 's/^/      /'
@@ -55,9 +59,10 @@ fi
 
 # 2. Check for console.log in TypeScript/JavaScript (excluding tests)
 echo -e "${BLUE}2.${NC} Checking for console.log..."
-JS_FILES=$(echo "$FILES" | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '__tests__' | grep -v '\.spec\.' || true)
-if [ -n "$JS_FILES" ]; then
-    CONSOLE_LOGS=$(echo "$JS_FILES" | xargs grep -n 'console\.log' 2>/dev/null | grep -v '// eslint-disable' | head -5 || true)
+JS_FILES_LIST=$(mktemp)
+xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | grep -v '\.test\.' | grep -v '__tests__' | grep -v '\.spec\.' > "$JS_FILES_LIST" || true
+if [ -s "$JS_FILES_LIST" ]; then
+    CONSOLE_LOGS=$(xargs grep -n 'console\.log' < "$JS_FILES_LIST" 2>/dev/null | grep -v '// eslint-disable' | head -5 || true)
     if [ -n "$CONSOLE_LOGS" ]; then
         echo -e "   ${RED}✗${NC} console.log found:"
         echo "$CONSOLE_LOGS" | head -3 | sed 's/^/      /'
@@ -68,12 +73,14 @@ if [ -n "$JS_FILES" ]; then
 else
     echo -e "   ${GREEN}✓${NC} No JS/TS files changed"
 fi
+rm -f "$JS_FILES_LIST"
 
 # 3. Check for TypeScript 'any' type
 echo -e "${BLUE}3.${NC} Checking for TypeScript 'any' type..."
-TS_FILES=$(echo "$FILES" | grep -E '\.(ts|tsx)$' | grep -v '\.d\.ts$' || true)
-if [ -n "$TS_FILES" ]; then
-    ANY_TYPES=$(echo "$TS_FILES" | xargs grep -n ': any\b' 2>/dev/null | grep -v '// eslint-disable' | grep -v '\.test\.' | head -5 || true)
+TS_FILES_LIST=$(mktemp)
+xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.(ts|tsx)$' | grep -v '\.d\.ts$' > "$TS_FILES_LIST" || true
+if [ -s "$TS_FILES_LIST" ]; then
+    ANY_TYPES=$(xargs grep -n ': any\b' < "$TS_FILES_LIST" 2>/dev/null | grep -v '// eslint-disable' | grep -v '\.test\.' | head -5 || true)
     if [ -n "$ANY_TYPES" ]; then
         echo -e "   ${YELLOW}⚠${NC} TypeScript 'any' found (consider proper types):"
         echo "$ANY_TYPES" | head -3 | sed 's/^/      /'
@@ -84,27 +91,32 @@ if [ -n "$TS_FILES" ]; then
 else
     echo -e "   ${GREEN}✓${NC} No TypeScript files changed"
 fi
+rm -f "$TS_FILES_LIST"
 
 # 4. Check tenant page authentication (Crispa-specific)
 echo -e "${BLUE}4.${NC} Checking tenant page authentication..."
-TENANT_PAGES=$(echo "$FILES" | grep -E 'pages/\[tenant\].*\.(tsx|ts)$' || true)
-if [ -n "$TENANT_PAGES" ]; then
-    for page in $TENANT_PAGES; do
+TENANT_AUTH_ERRORS=0
+while IFS= read -r -d '' page; do
+    if [[ "$page" =~ pages/\[tenant\].*\.(tsx|ts)$ ]]; then
         if [ -f "$page" ]; then
             if ! grep -qE 'withAuthenticationRequired|getSession|getServerSideProps' "$page"; then
                 echo -e "   ${RED}✗${NC} Missing authentication: $page"
-                ERRORS=$((ERRORS + 1))
+                TENANT_AUTH_ERRORS=$((TENANT_AUTH_ERRORS + 1))
             fi
         fi
-    done
-    [ $ERRORS -eq 0 ] && echo -e "   ${GREEN}✓${NC} All tenant pages have authentication"
+    fi
+done < "$FILES_LIST"
+if [ $TENANT_AUTH_ERRORS -gt 0 ]; then
+    ERRORS=$((ERRORS + TENANT_AUTH_ERRORS))
+elif xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -qE 'pages/\[tenant\].*\.(tsx|ts)$'; then
+    echo -e "   ${GREEN}✓${NC} All tenant pages have authentication"
 else
     echo -e "   ${GREEN}✓${NC} No tenant pages changed"
 fi
 
 # 5. Check for hardcoded IDs
 echo -e "${BLUE}5.${NC} Checking for hardcoded IDs..."
-HARDCODED=$(echo "$FILES" | xargs grep -nE '(user_id|tenant_id|slack_id|channel_id)\s*=\s*["\x27][A-Za-z0-9_-]{5,}["\x27]' 2>/dev/null | grep -v test | grep -v mock | head -3 || true)
+HARDCODED=$(xargs -0 grep -nE '(user_id|tenant_id|slack_id|channel_id)\s*=\s*["\x27][A-Za-z0-9_-]{5,}["\x27]' < "$FILES_LIST" 2>/dev/null | grep -v test | grep -v mock | head -3 || true)
 if [ -n "$HARDCODED" ]; then
     echo -e "   ${YELLOW}⚠${NC} Potential hardcoded IDs:"
     echo "$HARDCODED" | sed 's/^/      /'
@@ -115,9 +127,10 @@ fi
 
 # 6. Check for N+1 query patterns (Django)
 echo -e "${BLUE}6.${NC} Checking for N+1 query patterns..."
-PY_FILES=$(echo "$FILES" | grep -E '\.py$' | grep -v test | grep -v migration || true)
-if [ -n "$PY_FILES" ]; then
-    N_PLUS_1=$(echo "$PY_FILES" | xargs grep -n '\.objects\.' 2>/dev/null | grep -v 'select_related\|prefetch_related' | grep 'for.*in.*\.all()\|for.*in.*\.filter(' | head -3 || true)
+PY_FILES_LIST=$(mktemp)
+xargs -0 -I{} sh -c 'echo "$1"' _ {} < "$FILES_LIST" 2>/dev/null | grep -E '\.py$' | grep -v test | grep -v migration > "$PY_FILES_LIST" || true
+if [ -s "$PY_FILES_LIST" ]; then
+    N_PLUS_1=$(xargs grep -n '\.objects\.' < "$PY_FILES_LIST" 2>/dev/null | grep -v 'select_related\|prefetch_related' | grep 'for.*in.*\.all()\|for.*in.*\.filter(' | head -3 || true)
     if [ -n "$N_PLUS_1" ]; then
         echo -e "   ${YELLOW}⚠${NC} Potential N+1 queries (use select_related/prefetch_related):"
         echo "$N_PLUS_1" | sed 's/^/      /'
@@ -128,6 +141,7 @@ if [ -n "$PY_FILES" ]; then
 else
     echo -e "   ${GREEN}✓${NC} No Python files changed"
 fi
+rm -f "$PY_FILES_LIST"
 
 # Summary
 echo ""

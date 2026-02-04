@@ -162,15 +162,19 @@ fi
 info "Setting up browser debugging MCP..."
 CHROME_PATH="/Applications/Google Chrome.app"
 MCP_CONFIGURED=false
+CHROME_DEVTOOLS_MCP_VERSION="0.16.0"
 
 if [ -d "$CHROME_PATH" ]; then
     if command -v claude &> /dev/null; then
         # Remove existing config if present
         claude mcp remove --scope user chrome-devtools 2>/dev/null || true
-        # Add chrome-devtools MCP
-        claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@latest --browserUrl http://localhost:9223
-        MCP_CONFIGURED=true
-        success "Chrome DevTools MCP configured"
+        # Add chrome-devtools MCP (non-fatal - don't abort installer on failure)
+        if claude mcp add --scope user chrome-devtools -- npx -y "chrome-devtools-mcp@$CHROME_DEVTOOLS_MCP_VERSION" --browserUrl http://localhost:9223 2>/dev/null; then
+            MCP_CONFIGURED=true
+            success "Chrome DevTools MCP configured (v$CHROME_DEVTOOLS_MCP_VERSION)"
+        else
+            warning "Failed to configure Chrome DevTools MCP - you can set it up manually later"
+        fi
 
         # Add shell alias for launching Chrome with debugging
         SHELL_RC=""

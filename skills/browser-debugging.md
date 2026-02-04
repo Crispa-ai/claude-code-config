@@ -5,6 +5,7 @@ Debug frontend issues directly in Chrome using Claude Code's Chrome DevTools MCP
 ## Quick Start
 
 1. **Launch Chrome with debugging:**
+
    ```bash
    chrome-debug
    ```
@@ -26,7 +27,7 @@ The browser MCP is automatically configured by the install script. If you need t
 brew install --cask google-chrome
 
 # Add MCP to Claude Code
-claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@latest --browserUrl http://localhost:9223
+claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@0.16.0 --browserUrl http://localhost:9223
 
 # Add alias to your shell (zsh)
 echo 'alias chrome-debug="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9223 --user-data-dir=/tmp/chrome-debug-profile"' >> ~/.zshrc
@@ -78,7 +79,7 @@ source ~/.zshrc
 
 ### Debug a Form Submission
 
-```
+```text
 1. "Take a snapshot of the form"
 2. "Fill the form fields with test data"
 3. "Click submit and capture network requests"
@@ -87,7 +88,7 @@ source ~/.zshrc
 
 ### Debug a Loading Issue
 
-```
+```text
 1. "Navigate to /dashboard and take a screenshot"
 2. "Show me all network requests"
 3. "Are there any failed API calls?"
@@ -96,7 +97,7 @@ source ~/.zshrc
 
 ### Debug a Visual Bug
 
-```
+```text
 1. "Take a screenshot of the page"
 2. "Get the snapshot - I need to find element X"
 3. "Evaluate: document.querySelector('.broken-element').computedStyleMap()"
@@ -128,6 +129,7 @@ curl http://localhost:9223/json/version
 ### MCP not available after install
 
 Restart Claude Code to load new MCP configuration:
+
 ```bash
 # Verify MCP is configured
 claude mcp list | grep chrome
