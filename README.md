@@ -265,7 +265,7 @@ Claude: [Checks Redis connection, Celery worker status, task queue,
 
 ### accounting-feature-agent
 
-Domain expert for accounting and financial code. Enforces rules from the [Accounting Rules](https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb) Linear document (owned by Oliver). Rules are **auto-synced daily** from Linear via `sync-linear-to-agent.yml` — no manual updates needed.
+Domain expert for accounting and financial code. Enforces rules from the [Accounting Rules](https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb) Linear document (owned by Product). Rules are **auto-synced daily** from Linear via `sync-linear-to-agent.yml` — no manual updates needed.
 
 **Covers:** Decimal precision, multi-tenancy, audit trails, journal balancing, multi-currency handling, bank reconciliation, invoice period controls.
 
@@ -289,7 +289,7 @@ Claude: [Launches accounting-feature-agent]
 
 **Rules stay current automatically:**
 
-- Oliver updates rules in Linear → workflow syncs to agent file daily at 6:30am UTC
+- Product updates rules in Linear → workflow syncs to agent file daily at 6:30am UTC
 - Same rules also sync to [Notion](https://www.notion.so/Dos-and-Donts-Linear-Sync-2fd608f8081480758ab1da31b39f97e8) at 6:00am UTC
 - No manual step required — Single source of truth is the Linear document
 
