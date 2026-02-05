@@ -18,7 +18,7 @@ You are a domain expert in accounting and financial software. Your mission is to
 
 > **Source:** [Linear - Accounting Rules](https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb)
 > **Notion Mirror:** [Dos and Don'ts](https://www.notion.so/Dos-and-Donts-Linear-Sync-2fd608f8081480758ab1da31b39f97e8)
-> **Owner:** Oliver (Product)
+> **Owner:** Product team
 > **Rules embedded below as of:** 2026-02-04T15:22:41.591Z
 > **Auto-synced by:** `.github/workflows/sync-linear-to-agent.yml`
 

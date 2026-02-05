@@ -263,6 +263,36 @@ Claude: [Checks Redis connection, Celery worker status, task queue,
         inspects failed tasks, identifies deadlock, suggests fix]
 ```
 
+### accounting-feature-agent
+
+Domain expert for accounting and financial code. Enforces rules from the [Accounting Rules](https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb) Linear document (owned by Product). Rules are **auto-synced daily** from Linear via `sync-linear-to-agent.yml` — no manual updates needed.
+
+**Covers:** Decimal precision, multi-tenancy, audit trails, journal balancing, multi-currency handling, bank reconciliation, invoice period controls.
+
+```text
+User: Use the accounting-feature-agent to review this payment endpoint
+User: Add a multi-currency invoice creation flow
+```
+
+Example conversation:
+```
+User: Add an endpoint to create invoices
+Claude: [Launches accounting-feature-agent]
+        Reviewing against accounting rules:
+        ✗ Line 12: amount = float(data["amount"]) — use Decimal, not float
+        ✗ Line 15: currency = "DKK" — use tenant.default_currency
+        ✗ Line 20: Missing @transaction.atomic
+        ✗ Line 24: No AuditLog entry for invoice creation
+```
+
+**Auto-triggers on PRs touching:** `backend/apps/accounting/**`, `backend/apps/invoices/**`, `backend/apps/payments/**`, `backend/apps/billing/**`
+
+**Rules stay current automatically:**
+
+- Product updates rules in Linear → workflow syncs to agent file daily at 6:30am UTC
+- Same rules also sync to [Notion](https://www.notion.so/Dos-and-Donts-Linear-Sync-2fd608f8081480758ab1da31b39f97e8) at 6:00am UTC
+- No manual step required — Single source of truth is the Linear document
+
 ---
 
 ## Skills
