@@ -1,0 +1,224 @@
+name: Sync Linear Rules to Accounting Agent
+
+on:
+  schedule:
+    - cron: '30 6 * * *'  # Daily at 6:30am UTC (after Notion sync at 6:00am)
+  workflow_dispatch:  # Manual trigger
+
+env:
+  LINEAR_DOCUMENT_ID: 'b05fc81b-b20d-41f2-9ffb-f4ceb62879c5'
+  AGENT_FILE: 'agents/accounting-feature-agent.md'
+  BEGIN_MARKER: '<!-- BEGIN SYNCED RULES -->'
+  END_MARKER: '<!-- END SYNCED RULES -->'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Linear Document
+        id: linear
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          if [ -z "$LINEAR_API_KEY" ]; then
+            echo "Error: LINEAR_API_KEY secret not set"
+            exit 1
+          fi
+
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/linear_response.json -X POST https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "query GetDocument($id: String!) { document(id: $id) { title content updatedAt slugId } }",
+              "variables": { "id": "'"$LINEAR_DOCUMENT_ID"'" }
+            }')
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Linear API HTTP error: $HTTP_CODE"
+            cat /tmp/linear_response.json
+            exit 1
+          fi
+
+          RESPONSE=$(cat /tmp/linear_response.json)
+
+          ERROR=$(echo "$RESPONSE" | jq -r '.errors[0].message // empty')
+          if [ -n "$ERROR" ]; then
+            echo "Linear API error: $ERROR"
+            exit 1
+          fi
+
+          CONTENT=$(echo "$RESPONSE" | jq -r '.data.document.content')
+          UPDATED=$(echo "$RESPONSE" | jq -r '.data.document.updatedAt')
+
+          if [ "$CONTENT" = "null" ] || [ -z "$CONTENT" ]; then
+            echo "Error: Failed to extract document content"
+            exit 1
+          fi
+          if [ "$UPDATED" = "null" ] || [ -z "$UPDATED" ]; then
+            echo "Error: Failed to extract document updatedAt"
+            exit 1
+          fi
+
+          echo "updated=$UPDATED" >> $GITHUB_OUTPUT
+          printf '%s\n' "$CONTENT" > /tmp/linear_content.md
+
+      - name: Check if update needed
+        id: check
+        run: |
+          CURRENT_TS=$(grep -oP 'Rules embedded below as of:\*\* \K[0-9T:.Z-]+' "$AGENT_FILE" || echo "")
+          LINEAR_TS="${{ steps.linear.outputs.updated }}"
+
+          echo "Current timestamp: $CURRENT_TS"
+          echo "Linear timestamp:  $LINEAR_TS"
+
+          if [ "$CURRENT_TS" = "$LINEAR_TS" ]; then
+            echo "Rules are already up to date"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "Rules need updating"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js
+        if: steps.check.outputs.needs_update == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update agent file
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          LINEAR_UPDATED_AT: ${{ steps.linear.outputs.updated }}
+        run: |
+          node << 'SCRIPT'
+          const fs = require('fs');
+
+          const agentFile = process.env.AGENT_FILE;
+          const beginMarker = process.env.BEGIN_MARKER;
+          const endMarker = process.env.END_MARKER;
+          const updatedAt = process.env.LINEAR_UPDATED_AT;
+
+          const agentContent = fs.readFileSync(agentFile, 'utf8');
+          const linearContent = fs.readFileSync('/tmp/linear_content.md', 'utf8');
+
+          // Transform Linear markdown into agent rules format
+          function transformLinearContent(md) {
+            const lines = md.split('\n');
+            const output = [];
+            let skipLeadingDividers = true;
+
+            for (const line of lines) {
+              // Skip leading dividers before first real content
+              if (skipLeadingDividers && line.trim() === '---') continue;
+              if (skipLeadingDividers && line.trim()) skipLeadingDividers = false;
+              if (skipLeadingDividers) continue;
+
+              // Shift heading levels: # -> ##, ## -> ###, ### -> ####
+              if (line.startsWith('### ')) {
+                output.push('#' + line);
+              } else if (line.startsWith('## ')) {
+                output.push('#' + line);
+              } else if (line.startsWith('# ')) {
+                output.push('#' + line);
+              }
+              // Convert * bullets to - bullets
+              else if (line.startsWith('* ')) {
+                output.push('- ' + line.slice(2));
+              }
+              // Pass through everything else
+              else {
+                output.push(line);
+              }
+            }
+
+            return output.join('\n');
+          }
+
+          const transformedRules = transformLinearContent(linearContent);
+
+          // Build the new synced block
+          const newSyncedBlock = [
+            beginMarker,
+            '',
+            '## Accounting Rules',
+            '',
+            transformedRules,
+            '',
+            endMarker
+          ].join('\n');
+
+          // Replace content between markers
+          const beginIdx = agentContent.indexOf(beginMarker);
+          const endIdx = agentContent.indexOf(endMarker);
+
+          if (beginIdx === -1 || endIdx === -1) {
+            console.error('Error: Could not find sync markers in agent file');
+            console.error(`  BEGIN marker found: ${beginIdx !== -1}`);
+            console.error(`  END marker found: ${endIdx !== -1}`);
+            process.exit(1);
+          }
+
+          const before = agentContent.slice(0, beginIdx);
+          const after = agentContent.slice(endIdx + endMarker.length);
+
+          // Also update the timestamp in the Rules Source section
+          const updatedContent = (before + newSyncedBlock + after)
+            .replace(
+              /Rules embedded below as of:\*\* [0-9T:.Z-]+/,
+              `Rules embedded below as of:** ${updatedAt}`
+            );
+
+          fs.writeFileSync(agentFile, updatedContent);
+
+          console.log(`Updated agent with rules from ${updatedAt}`);
+          console.log(`Transformed ${transformedRules.split('\n').length} lines`);
+          SCRIPT
+
+      - name: Verify agent file markers after update
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          # Verify the file was updated and markers are intact
+          if ! grep -q "$BEGIN_MARKER" "$AGENT_FILE"; then
+            echo "Error: BEGIN marker missing after update"
+            exit 1
+          fi
+          if ! grep -q "$END_MARKER" "$AGENT_FILE"; then
+            echo "Error: END marker missing after update"
+            exit 1
+          fi
+          echo "Agent file markers verified"
+
+      - name: Commit and push
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "$AGENT_FILE"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "$(cat <<'MSG'
+          chore: sync accounting rules from Linear
+
+          Updated from Linear document (updatedAt: ${{ steps.linear.outputs.updated }})
+          Source: https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb
+          MSG
+          )"
+
+          git push
+
+      - name: Log result
+        if: success()
+        run: |
+          if [ "${{ steps.check.outputs.needs_update }}" = "true" ]; then
+            echo "Synced accounting rules from Linear (${{ steps.linear.outputs.updated }})"
+          else
+            echo "No update needed - rules already current"
+          fi
