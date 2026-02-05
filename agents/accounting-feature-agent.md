@@ -19,17 +19,18 @@ You are a domain expert in accounting and financial software. Your mission is to
 > **Source:** [Linear - Accounting Rules](https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb)
 > **Notion Mirror:** [Dos and Don'ts](https://www.notion.so/Dos-and-Donts-Linear-Sync-2fd608f8081480758ab1da31b39f97e8)
 > **Owner:** Oliver (Product)
-> **Rules embedded below as of:** 2026-02-04T14:58:41.837Z
+> **Rules embedded below as of:** 2026-02-04T15:22:41.591Z
+> **Auto-synced by:** `.github/workflows/sync-linear-to-agent.yml`
 
-**Note:** If Linear MCP is configured, you may optionally check for rule updates:
+**Note:** Rules are synced automatically from Linear daily at 6:30am UTC. If Linear MCP is configured, you can also check manually:
 
 ```text
 mcp__linear-server__get_document(id: "b05fc81b-b20d-41f2-9ffb-f4ceb62879c5")
 ```
 
-Compare `updatedAt` to the timestamp above. If newer, alert the user to review changes.
-
 ---
+
+<!-- BEGIN SYNCED RULES -->
 
 ## Accounting Rules
 
@@ -79,11 +80,53 @@ Compare `updatedAt` to the timestamp above. If newer, alert the user to review c
 
 ### Invoice-Specific Rules
 
-#### Month Close
-
 - Prevent modifications to invoices in closed periods
 - Require explicit "reopen period" action with audit log
 - Validate invoice date against open periods
+
+---
+
+### Journal & General Ledger (The Engine)
+
+#### ✅ DOs
+
+- Always ensure the Journal balances to **0.00** before allowing a booking
+- Always assign a permanent, sequential Short-id upon booking
+- Always map automatic entries (Currency Difference, Retained Earnings, VAT bookkeepings, Receivables, Payables, etc.) to the user's configured "System Accounts"
+
+#### ❌ DON'Ts
+
+- Never allow a "Split" transaction where the sub-lines do not sum up exactly to the parent line
+- Never allow manual booking directly to "Control Accounts" (Trade Receivables/Payables). Users must book on a Customer/Supplier ID
+
+---
+
+### Multi-Currency Engine
+
+#### ✅ DOs
+
+- **Data Structure:** Every transaction line must store 4 values:
+  1. `Original Amount` (e.g., 100 USD)
+  2. `Original Currency` (USD)
+  3. `Exchange Rate` (7.00)
+  4. `Converted Amount` (700 DKK)
+- Always calculate the difference between *Invoice Rate* and *Payment Rate* instantly upon payment. Book the difference to **Realized Gain/Loss** account
+- Always report the final General Ledger impact in the company's base currency
+
+#### ❌ DON'Ts
+
+- Never book a foreign currency transaction without fetching or enforcing a valid exchange rate for that specific date
+- Never ask the user to calculate the base currency value of a foreign currency invoice manually
+
+---
+
+### Bank Reconciliation
+
+#### ✅ DOs
+
+- Always hash uploaded files (MD5) to block identical uploads
+- Always check `[Date + Amount + Text]` to prevent importing duplicate lines from overlapping date ranges
+- Always allow "Many-to-One" matching (e.g., 3 partial payments covering 1 invoice)
 
 ---
 
@@ -128,6 +171,8 @@ def create_invoice(data):
     )
 ```
 
+<!-- END SYNCED RULES -->
+
 ---
 
 ## Review Checklist
@@ -143,24 +188,10 @@ When reviewing accounting code, verify:
 - [ ] Soft delete only (no `.delete()`)
 - [ ] `.full_clean()` before `.save()`
 - [ ] Closed period check before invoice modifications
-
----
-
-## Updating Embedded Rules
-
-When Oliver updates the Linear document, refresh this agent:
-
-1. Fetch latest from Linear (requires Linear MCP):
-
-   ```text
-   mcp__linear-server__get_document(id: "b05fc81b-b20d-41f2-9ffb-f4ceb62879c5")
-   ```
-
-2. Update the DOs/DON'Ts sections above
-
-3. Update the "Rules embedded below as of" timestamp
-
-4. Commit to `claude-code-config` repo
+- [ ] Journal balances to 0.00 before booking
+- [ ] Multi-currency lines store all 4 values (amount, currency, rate, converted)
+- [ ] No manual booking to Control Accounts
+- [ ] Bank file uploads checked for duplicates (MD5 hash + date/amount/text)
 
 ---
 
