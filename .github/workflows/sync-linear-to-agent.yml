@@ -191,23 +191,28 @@ jobs:
           fi
           echo "Agent file markers verified"
 
-      - name: Create pull request
+      - name: Commit and push
         if: steps.check.outputs.needs_update == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: |
-            chore: sync accounting rules from Linear
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-            Updated from Linear document (updatedAt: ${{ steps.linear.outputs.updated }})
-            Source: https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb
-          title: "chore: sync accounting rules from Linear"
-          body: |
-            Automated sync of accounting rules from Linear document.
+          git add "$AGENT_FILE"
 
-            **Updated at:** `${{ steps.linear.outputs.updated }}`
-            **Source:** [Accounting Rules - Dos and Don'ts](https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb)
-          branch: sync/accounting-rules-${{ github.run_number }}
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "$(cat <<'MSG'
+          chore: sync accounting rules from Linear
+
+          Updated from Linear document (updatedAt: ${{ steps.linear.outputs.updated }})
+          Source: https://linear.app/crispa/document/accounting-rules-dos-and-donts-f470a2e9fbdb
+          MSG
+          )"
+
+          git push
 
       - name: Log result
         if: success()
