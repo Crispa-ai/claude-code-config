@@ -1,0 +1,14 @@
+{
+  "name": "crispa",
+  "owner": { "name": "Crispa" },
+  "version": "1.0.0",
+  "description": "Shared Claude agents and skills for Crispa projects",
+  "plugins": [
+    {
+      "name": "crispa-config",
+      "source": "./",
+      "version": "1.0.0",
+      "description": "Crispa dev framework: code-review, security, accounting, query-optimization, and debugging agents and skills."
+    }
+  ]
+}

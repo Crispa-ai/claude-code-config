@@ -1,3 +1,8 @@
+---
+name: complypay-payments-api
+description: Reference for the ComplyPay Payments API used in Crispa payment integrations. Use when initiating payments or working with payment states and endpoints.
+---
+
 # ComplyPay Payments API Reference
 
 Quick reference for the ComplyPay Payments API used in our payment processing integrations.

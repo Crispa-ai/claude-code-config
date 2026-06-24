@@ -1,3 +1,8 @@
+---
+name: code-validation-checklist
+description: Pre-commit validation checklist for Crispa's CLAUDE.md standards. Use before committing to check for secrets, console.log, TypeScript any, tenant auth, and query issues.
+---
+
 # Code Validation Checklist
 
 **Quick validation procedure for ensuring code meets CLAUDE.md standards before committing.**

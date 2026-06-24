@@ -4,6 +4,28 @@ Shared agents, skills, and git hooks for Crispa repos.
 
 ---
 
+## Install as a plugin (Claude Code + Cowork)
+
+This repo is also a Claude plugin marketplace, so the agents and skills can be
+installed without the symlink script — and they work in Cowork as well as
+Claude Code.
+
+**Claude Code**
+    /plugin marketplace add Crispa-ai/claude-code-config
+    /plugin install crispa-config@crispa
+
+**Cowork / Claude Desktop / chat (web)**
+Customize → Plugins → Personal plugins → "+" → Add marketplace →
+paste https://github.com/Crispa-ai/claude-code-config → install "crispa-config".
+
+Requires code execution enabled (Settings → Capabilities).
+
+Note: the git `pre-push` hook and the Chrome DevTools MCP / `chrome-debug` alias
+are local Claude Code setup and are still installed via `install.sh`; they do not
+apply in Cowork.
+
+---
+
 ## Prerequisites
 
 1. **Claude Code CLI**

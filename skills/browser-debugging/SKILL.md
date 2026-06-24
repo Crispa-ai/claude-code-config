@@ -1,3 +1,8 @@
+---
+name: browser-debugging
+description: Debug frontend issues directly in Chrome via the Chrome DevTools MCP. Use when investigating console errors, failed network requests, or UI behaviour in the running app.
+---
+
 # Browser Debugging Skill
 
 Debug frontend issues directly in Chrome using Claude Code's Chrome DevTools MCP integration.
