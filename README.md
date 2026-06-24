@@ -24,6 +24,36 @@ Note: the git `pre-push` hook and the Chrome DevTools MCP / `chrome-debug` alias
 are local Claude Code setup and are still installed via `install.sh`; they do not
 apply in Cowork.
 
+### Updating the plugin (releasing changes)
+
+The plugin uses **explicit, controlled versions** — installed users only receive
+updates when the `version` is bumped. Pushing changes to `main` alone does *not*
+update anyone until the version changes and the marketplace re-syncs.
+
+To release a change to the skills or agents:
+
+1. Make your edits on a branch and bump the version (keeps both manifests in sync):
+
+   ```bash
+   ./scripts/bump-version.sh 1.0.1
+   ```
+
+   This updates `version` in `.claude-plugin/plugin.json` and both the marketplace
+   and plugin entries in `.claude-plugin/marketplace.json`. Use
+   [semver](https://semver.org/): patch for fixes, minor for new content.
+
+2. Open a PR and merge to `main` (the branch the marketplace tracks).
+
+3. Re-sync the marketplace so installed clients see the new version:
+   - **Cowork (org-wide):** an Org Owner enables Organization settings → Plugins →
+     "Sync automatically" once, and every merge to `main` then syncs automatically.
+     Otherwise click **Update** on the marketplace in Customize → Plugins.
+   - **Claude Code:** `/plugin marketplace update crispa` then `/reload-plugins`.
+
+Caveat: an in-place **Update only refreshes existing skills/agents** — when you add
+a brand-new skill or agent folder, users may need to **uninstall and reinstall**
+the plugin to pick it up.
+
 ---
 
 ## Prerequisites
