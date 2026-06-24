@@ -1,3 +1,8 @@
+---
+name: query-optimization-helper
+description: Reference for optimising Django ORM queries and eliminating N+1 problems. Use when a view or endpoint is slow or makes excessive queries.
+---
+
 # Django Query Optimization Helper
 
 **Quick reference guide for optimizing Django ORM queries and eliminating N+1 query problems.**

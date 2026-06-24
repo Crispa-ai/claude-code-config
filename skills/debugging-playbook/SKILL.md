@@ -1,3 +1,8 @@
+---
+name: debugging-playbook
+description: Playbook for diagnosing common issues in Crispa's Django + Next.js stack. Use when triaging 500s, failed deploys, or stuck background tasks.
+---
+
 # Debugging Playbook
 
 **Quick reference for diagnosing and fixing common issues in Django + Next.js applications.**

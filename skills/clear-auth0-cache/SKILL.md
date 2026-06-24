@@ -1,3 +1,8 @@
+---
+name: clear-auth0-cache
+description: Fix the frontend being stuck on the 'Loading Crispa' spinner with no API requests. Use when a user is stuck on the loading screen due to stale Auth0 cache.
+---
+
 # Clear Auth0 Cache
 
 Use this skill when the frontend is stuck on "Loading Crispa" spinner with no API requests being made.

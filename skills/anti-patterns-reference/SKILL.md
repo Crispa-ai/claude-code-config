@@ -1,3 +1,8 @@
+---
+name: anti-patterns-reference
+description: Historical reference of past Crispa production incidents, security breaches, and data-corruption events. Use during code review, onboarding, or when deciding whether to allow an exception to a coding rule.
+---
+
 # Anti-Patterns Reference
 
 **Historical incident reference documenting past production issues, security breaches, and data corruption events. Each pattern includes what happened, why it was dangerous, and how to prevent it.**

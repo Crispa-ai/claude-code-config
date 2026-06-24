@@ -1,3 +1,8 @@
+---
+name: dependabot-helper
+description: Procedure for managing and cleaning up Dependabot PRs. Use when triaging multiple dependency-upgrade PRs and closing stale ones.
+---
+
 # Dependabot Helper
 
 **Quick procedure for managing Dependabot PRs and closing outdated upgrade requests.**

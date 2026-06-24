@@ -1,3 +1,8 @@
+---
+name: multi-tenant-security-handbook
+description: Guide to tenant isolation, authentication, OAuth flows, and data protection in Crispa's multi-tenant Django app. Use when adding integrations or reviewing tenant-aware security.
+---
+
 # Multi-Tenant Security Handbook
 
 **Complete guide to tenant isolation, authentication, security, and data protection in multi-tenant Django applications.**
