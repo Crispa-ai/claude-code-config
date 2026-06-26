@@ -1,6 +1,8 @@
 {
   "name": "crispa-config",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shared Claude agents and skills for Crispa projects",
-  "author": { "name": "Crispa" }
+  "author": {
+    "name": "Crispa"
+  }
 }
